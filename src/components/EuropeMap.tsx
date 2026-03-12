@@ -61,20 +61,24 @@ const SVG_WIDTH = 768.42334;
 const SVG_HEIGHT = 696.56848;
 
 /**
- * Approximate center of Denmark in SVG screen coordinates.
+ * Center of Denmark in SVG viewport coordinates.
  * Used for the zoom-in animation in step 4.
- * Computed from g5 group transform + layer1 translate:
- *   viewport_x = 1.261 + 239.940 + 0.06613 * g5_x
- *   viewport_y = 175.734 + 150.294 + 0.06620 * g5_y
- * Path starting points (viewport):
- *   path3 (N. Jutland) → (245.5, 343.9)
- *   path2 (Main Jutland) → (261.8, 359.1)
- *   path5 (S. Jutland+Funen) → (264.6, 373.0)
- *   path4 (Lolland/Falster) → (272.6, 372.9)
- * Averaged center (excluding Bornholm): ≈ (261, 362)
+ * Calculated from the actual bounding boxes of all DK paths (path1–path5)
+ * by parsing their `d` attribute coordinates and applying the matrix transform:
+ *   viewport_x = 1.261 + 0.06613 * g5_x + 239.940
+ *   viewport_y = 175.734 + 0.06620 * g5_y + 150.294
+ *
+ * Bounding boxes (viewport coords):
+ *   path2 (Main Jutland):     x=[241.5, 274.1], y=[341.4, 360.8]
+ *   path3 (N. Jutland):       x=[242.5, 269.8], y=[326.0, 346.3]
+ *   path5 (S. Jutland+Funen): x=[241.2, 267.6], y=[356.1, 375.9]
+ *   path4 (Lolland/Falster):  x=[266.8, 282.2], y=[355.2, 378.5]
+ *   path1 (Bornholm):         x=[275.7, 306.0], y=[353.2, 371.7]
+ * Combined DK bounding box:   x=[241.2, 306.0], y=[326.0, 378.5]
+ * Center: (273.6, 352.3) → rounded to (274, 352)
  */
-const DK_CENTER_X = 263;
-const DK_CENTER_Y = 362;
+const DK_CENTER_X = 274;
+const DK_CENTER_Y = 352;
 
 /** Colors */
 const COLOR_NEUTRAL = '#D1D5DB';
@@ -233,20 +237,26 @@ const EuropeMap: React.FC<EuropeMapProps> = ({
     [1, 3.5, 4, 4]
   );
 
-  // Translate to center on Denmark when zooming
-  // Denmark is at approximately (DK_CENTER_X, DK_CENTER_Y) in SVG coords.
-  // At zoom 4x we need to translate so Denmark is centered in the viewport.
-  // The SVG is at width=100%. We pan using translateX/Y as percentage of SVG size.
-  // translate = -(center_pct - 0.5) * scale * 100
-  const dkCenterXPct = DK_CENTER_X / SVG_WIDTH;  // ~0.342
-  const dkCenterYPct = DK_CENTER_Y / SVG_HEIGHT; // ~0.520
+  // Translate to center on Denmark when zooming.
+  // Denmark is at approximately (DK_CENTER_X, DK_CENTER_Y) in SVG viewport coords.
+  // The motion.div wrapper has width="100%", so Framer Motion's `x: "N%"` translates
+  // by N% of the wrapper's own width, which equals the SVG width. This is essential:
+  // the values MUST be percentage strings (e.g. "50%"), not raw pixel numbers.
+  //
+  // Formula: translateX = (0.5 - centerFraction) * scale * 100 + "%"
+  //   This moves the scaled SVG so that centerFraction aligns with viewport center (0.5).
+  //
+  //   At scale 4: translateX = (0.5 - 0.357) * 400 = ~57.4%
+  //               translateY = (0.5 - 0.505) * 400 = ~-2.1%
+  const dkCenterXPct = DK_CENTER_X / SVG_WIDTH;  // ~0.357
+  const dkCenterYPct = DK_CENTER_Y / SVG_HEIGHT; // ~0.505
   const zoomTranslateX = useScrollStep(scrollYProgress,
     [0.58, 0.7, 0.85, 1.0],
-    [0, (0.5 - dkCenterXPct) * 100 * 3.5, (0.5 - dkCenterXPct) * 100 * 4, (0.5 - dkCenterXPct) * 100 * 4]
+    ['0%', `${(0.5 - dkCenterXPct) * 100 * 3.5}%`, `${(0.5 - dkCenterXPct) * 100 * 4}%`, `${(0.5 - dkCenterXPct) * 100 * 4}%`]
   );
   const zoomTranslateY = useScrollStep(scrollYProgress,
     [0.58, 0.7, 0.85, 1.0],
-    [0, (0.5 - dkCenterYPct) * 100 * 3.5, (0.5 - dkCenterYPct) * 100 * 4, (0.5 - dkCenterYPct) * 100 * 4]
+    ['0%', `${(0.5 - dkCenterYPct) * 100 * 3.5}%`, `${(0.5 - dkCenterYPct) * 100 * 4}%`, `${(0.5 - dkCenterYPct) * 100 * 4}%`]
   );
 
   // ── PROP OVERRIDES ────────────────────────────────────────────
