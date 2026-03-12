@@ -63,10 +63,18 @@ const SVG_HEIGHT = 696.56848;
 /**
  * Approximate center of Denmark in SVG screen coordinates.
  * Used for the zoom-in animation in step 4.
- * Computed from g5 group transform + layer1 translate.
+ * Computed from g5 group transform + layer1 translate:
+ *   viewport_x = 1.261 + 239.940 + 0.06613 * g5_x
+ *   viewport_y = 175.734 + 150.294 + 0.06620 * g5_y
+ * Path starting points (viewport):
+ *   path3 (N. Jutland) → (245.5, 343.9)
+ *   path2 (Main Jutland) → (261.8, 359.1)
+ *   path5 (S. Jutland+Funen) → (264.6, 373.0)
+ *   path4 (Lolland/Falster) → (272.6, 372.9)
+ * Averaged center (excluding Bornholm): ≈ (261, 362)
  */
-const DK_CENTER_X = 270;
-const DK_CENTER_Y = 355;
+const DK_CENTER_X = 263;
+const DK_CENTER_Y = 362;
 
 /** Colors */
 const COLOR_NEUTRAL = '#D1D5DB';
@@ -192,16 +200,17 @@ const EuropeMap: React.FC<EuropeMapProps> = ({
   );
 
   // ── TRANSLATIONS (step 3) ─────────────────────────────────────
-  // PICASSO group: goes DOWN 30px during step 3 (0.4–0.6), returns at step 4
+  // PICASSO group: moves DOWN 30px during step 3 (scroll 0.35–0.5) and holds there.
+  // Groups must never snap back — they fade out while still displaced in step 4+.
   const picassoY = useScrollStep(scrollYProgress,
-    [0.35, 0.5, 0.65],
-    [0, 30, 0]
+    [0.35, 0.5, 1.0],
+    [0, 30, 30]
   );
 
-  // NORDPOOL group: goes UP 30px during step 3 (0.4–0.6), returns at step 4
+  // NORDPOOL group: moves UP 30px during step 3 (scroll 0.35–0.5) and holds there.
   const nordpoolY = useScrollStep(scrollYProgress,
-    [0.35, 0.5, 0.65],
-    [0, -30, 0]
+    [0.35, 0.5, 1.0],
+    [0, -30, -30]
   );
 
   // ── DK SEPARATION (step 5) ────────────────────────────────────
@@ -229,8 +238,8 @@ const EuropeMap: React.FC<EuropeMapProps> = ({
   // At zoom 4x we need to translate so Denmark is centered in the viewport.
   // The SVG is at width=100%. We pan using translateX/Y as percentage of SVG size.
   // translate = -(center_pct - 0.5) * scale * 100
-  const dkCenterXPct = DK_CENTER_X / SVG_WIDTH;  // ~0.351
-  const dkCenterYPct = DK_CENTER_Y / SVG_HEIGHT; // ~0.510
+  const dkCenterXPct = DK_CENTER_X / SVG_WIDTH;  // ~0.342
+  const dkCenterYPct = DK_CENTER_Y / SVG_HEIGHT; // ~0.520
   const zoomTranslateX = useScrollStep(scrollYProgress,
     [0.58, 0.7, 0.85, 1.0],
     [0, (0.5 - dkCenterXPct) * 100 * 3.5, (0.5 - dkCenterXPct) * 100 * 4, (0.5 - dkCenterXPct) * 100 * 4]
